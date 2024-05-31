@@ -7,7 +7,7 @@ notes:
  scans complete directory for IRBIS-exported .txt-files and creates .mat arrays
 =#
 
-importdir = joinpath(@__DIR__, "src/")
+importdir = joinpath(@__DIR__)
 pathtofile = "/home/haugened/Documents/data/hefex2/IR_video/230822_1537_01/bea"
 include(joinpath(importdir, "src", "ir_rawdata_processing.jl"))
 import .irraw
