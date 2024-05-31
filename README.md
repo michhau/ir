@@ -11,3 +11,7 @@ This is a reorganization of the scripts
 ## Raw data visualization
 
 The raw data can be visualized using the code/check_view_data.jl script.
+
+## Plot data from 2D ultrasonic anemometer
+
+Use code/plotiruswind.jl. Script can be started from terminal with argument parsing (documentation in head of script)
