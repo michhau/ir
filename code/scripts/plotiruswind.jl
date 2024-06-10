@@ -13,7 +13,7 @@ arguments:
 using PyCall, ArgParse, Dates
 #StatsBase,ImageFiltering,
 import PyPlot
-importdir = @__DIR__
+importdir = joinpath(@__DIR__, "..")
 pathtofile = "/home/haugened/Documents/data/2d_us_ir/"
 include(joinpath(importdir, "src", "ir_evaluation.jl"))
 import .irev

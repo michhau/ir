@@ -12,7 +12,7 @@ GridSpec = pyimport("matplotlib.gridspec")
 mpwidgets = pyimport("matplotlib.widgets")
 animation = pyimport("matplotlib.animation")
 
-importdir = joinpath(@__DIR__)
+importdir = joinpath(@__DIR__, "..")
 pathtofile = "/home/haugened/Documents/data/ir/"
 
 include(joinpath(importdir, "src", "ir_evaluation.jl"))
