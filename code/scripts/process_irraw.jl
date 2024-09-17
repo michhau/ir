@@ -7,14 +7,8 @@ notes:
  scans complete directory for IRBIS-exported .txt-files and creates .mat arrays
 =#
 
-if gethostname() == "Michi-T450s" || gethostname() == "x1carbon5"
-    importdir = "/home/michi/Documents/slf/ir/code/"
-    pathtofile = "/home/michi/Documents/slf/data/"
-elseif gethostname() == "LINUX24"
-    importdir = "/home/haugened/Documents/ir/code/"
-    #pathtofile = "/home/haugened/Documents/data21_unordered/ir_todo"
-    pathtofile = "/home/haugened/Documents/data/hefex2/IR_video/230822_1537_01/bea"
-end
+importdir = joinpath(@__DIR__, "..")
+pathtofile = "/home/haugened/Documents/data/hefex2/IR_video/230822_1537_01/bea"
 include(joinpath(importdir, "src", "ir_rawdata_processing.jl"))
 import .irraw
 
