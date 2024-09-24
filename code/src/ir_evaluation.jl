@@ -8,7 +8,7 @@ using ReadWriteDlm2, DelimitedFiles, Dates, PyCall,
     ImageFiltering, ProgressMeter, LaTeXStrings, NCDatasets
 mpl_axes_grid1 = pyimport("mpl_toolkits.axes_grid1")
 #not on HYPERION
-if (gethostname() == "LINUX24" || gethostname() == "Michi-T450s")
+if (gethostname() == "LINUX24" || gethostname() == "Michi-T450s" || gethostname() == "x1carbon5")
     using PyPlot
 end
 #include("general.jl")
