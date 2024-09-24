@@ -9,7 +9,8 @@ using ReadWriteDlm2, DelimitedFiles, Dates, NCDatasets
 #using MAT
 
 export sortandcheckforcompleteness, sequencesin, fromdirloadpointdata,
-creatematarray, creatematarrayIRB2ASCII, createnetcdfIRB2ASCII
+creatematarray, creatematarrayIRB2ASCII, createnetcdfIRB2ASCII,
+saveprofiletonetcdf, readprofilefromnetcdf
 
 """
     sorttxtfilestofolders(pathtofolderall::String)
@@ -318,5 +319,31 @@ function createnetcdfIRB2ASCII(strseq::String, target::String)
     saveirasnetcdf(IRdata, "irdata", target)
 end
 
+"""
+    saveprofiletonetcdf(target::String, data::Array, deflatelvl::Int64=5)
+
+save profiles to NetCDF4
+"""
+function saveprofiletonetcdf(target::String, data::Array, deflatelvl::Int64=5)
+    @show("Saving profile to netCDF")
+    ds = NCDataset(target, "c")
+    defDim(ds, "pxl", size(data, 1))
+    defDim(ds, "frame", size(data, 2))
+    defVar(ds, "profile", data, ("pxl", "frame"); shuffle=true, deflatelevel=deflatelvl)
+    close(ds)
+end
+
+"""
+    readprofilefromnetcdf(dir::String)
+
+Read profile from netCDF
+"""
+function readprofilefromnetcdf(dir::String)
+    netfile = NCDataset(dir, "r")
+    dat = netfile["profile"]
+    dattot = dat[:,:]
+    close(netfile)
+    return dattot
+end
 
 end #module
