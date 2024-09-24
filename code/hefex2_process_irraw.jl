@@ -171,7 +171,7 @@ end
 
 #saveprofiletonetcdf(targetfile_hor1, hor_prof1)
 #saveprofiletonetcdf(targetfile_hor2, hor_prof2)
-saveprofiletonetcdf(targetfile_vert1, vert_prof)
+irraw.saveprofiletonetcdf(targetfile_vert1, vert_prof)
 
 #removing temporary files
 #rm(tmpfile_hor1, force=true)

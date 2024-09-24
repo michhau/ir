@@ -10,7 +10,8 @@ using ReadWriteDlm2, DelimitedFiles, Dates, NCDatasets
 
 export sortandcheckforcompleteness, sequencesin, fromdirloadpointdata,
 creatematarray, creatematarrayIRB2ASCII, createnetcdfIRB2ASCII,
-saveprofiletonetcdf, readprofilefromnetcdf
+saveprofiletonetcdf, saveavgprofiletonetcdf,
+readprofilefromnetcdf, readavgprofilefromnetcdf
 
 """
     sorttxtfilestofolders(pathtofolderall::String)
@@ -334,6 +335,22 @@ function saveprofiletonetcdf(target::String, data::Array, deflatelvl::Int64=5)
 end
 
 """
+    saveavgprofiletonetcdf(target::String, z::Vector, data_mean::Vector, data_low_quart::Vector, data_up_quart::Vector, deflatelvl::Int64=5)
+
+save time averaged profiles to NetCDF4
+"""
+function saveavgprofiletonetcdf(target::String, z::Vector, data_mean::Vector, data_low_quart::Vector, data_up_quart::Vector, deflatelvl::Int64=5)
+    @show("Saving time-averaged profile to netCDF")
+    ds = NCDataset(target, "c")
+    defDim(ds, "zdim", size(z, 1))
+    defVar(ds, "z", z, ("zdim",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "T_avg", data_mean, ("zdim",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "T_25quart", data_low_quart, ("zdim",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "T_75quart", data_up_quart, ("zdim",); shuffle=true, deflatelevel=deflatelvl)    
+    close(ds)
+end
+
+"""
     readprofilefromnetcdf(dir::String)
 
 Read profile from netCDF
@@ -344,6 +361,25 @@ function readprofilefromnetcdf(dir::String)
     dattot = dat[:,:]
     close(netfile)
     return dattot
+end
+
+"""
+    readavgprofilefromnetcdf(dir::String)
+
+Read time averaged profile (average, 25%, and 75% quartile) from netCDF
+"""
+function readavgprofilefromnetcdf(dir::String)
+    netfile = NCDataset(dir, "r")
+    z = netfile["z"]
+    z = z[:]
+    prof_avg = netfile["T_avg"]
+    prof_avg = prof_avg[:]
+    prof_low_quart = netfile["T_25quart"]
+    prof_low_quart = prof_low_quart[:]
+    prof_up_quart = netfile["T_75quart"]
+    prof_up_quart = prof_up_quart[:]
+    close(netfile)
+    return z, prof_avg, prof_low_quart, prof_up_quart
 end
 
 end #module
