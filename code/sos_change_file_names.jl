@@ -23,6 +23,10 @@ newfilenumber = lpad.(string.(filenumber), 4, '0')
 
 #concentate with beginning to obtain new file names
 newfilenames = string.(files[1][1:13], newfilenumber)
+totalnewfilenames = string.(newfilenames, ".irb")
+
+#find out which file names to update
+to_update = .!(files .== totalnewfilenames)
 
 #rename
 for i in 1:length(files)
