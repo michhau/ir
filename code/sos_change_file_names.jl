@@ -7,7 +7,7 @@ Change the file names of the files that I got from Danny Hogan (5.11.24)
 so that they appear in the correct order in IRBIS (adding a leading "0")
 =#
 
-location = "/home/michi/Documents/slf/tmp/20230124_ir_sheet1/"
+location = "/home/michi/Documents/slf/tmp/20230124_ir_surface/"
 
 #read all files in folder
 files = readdir(location)
@@ -30,5 +30,7 @@ to_update = .!(files .== totalnewfilenames)
 
 #rename
 for i in 1:length(files)
-    mv(joinpath(location, files[i]), string(joinpath(location, newfilenames[i]), ".irb"))
+    if to_update[i]
+        mv(joinpath(location, files[i]), string(joinpath(location, newfilenames[i]), ".irb"), force=true)
+    end
 end
