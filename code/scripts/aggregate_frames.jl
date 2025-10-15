@@ -5,7 +5,7 @@
 #=
 Aggregate frames so that the resulting .nc-file is not too large
 =#
-using NCDatasets,PyCall, Statistics, LaTeXStrings, Dates #DelimitedFiles, Dates, Random, FFTW, Dates
+using PyCall, Statistics, LaTeXStrings, Dates #DelimitedFiles, Dates, Random, FFTW, Dates
 #StatsBase,ImageFiltering,
 import PyPlot
 #GridSpec = pyimport("matplotlib.gridspec")
@@ -21,26 +21,21 @@ import .irev
 #import .gen
 PyPlot.pygui(true)
 
-######################################################
-###              CHANGE VARIABLES HERE             ###
-######################################################
-
 ncfile = "230517_120045_frames14000_to_17999.nc"
 outfile = joinpath(pathtofile, "230517_120045_frames14000_to_17999_avg300.nc")
+
+rowrange = collect(75:539)
+colrange = collect(1:1024)
+framestoaverage = 30*10
 
 ######################################################
 
 println()
 println("-----------S-T-A-R-T-------------")
 
-######################################################
-###                   IMPORT STUFF                 ###
-######################################################
+#######################################################
+#save aggregate for single file
 (nrows, ncols, nframes) = irev.getdims(joinpath(pathtofile, ncfile), "irdata")
-
-rowrange = collect(75:539)
-colrange = collect(1:ncols)
-framestoaverage = 30*10
 
 nnewframes = div(nframes, framestoaverage)
 agg_array = fill(NaN, length(rowrange), length(colrange), nnewframes)
@@ -53,3 +48,29 @@ for i in 1:nnewframes
 end
 
 irev.saveirasnetcdf(agg_array, "irdata", outfile)
+
+#######################################################
+#aggregate for multiple nc files in a folder (not over file boundaries!)
+ncfolder = joinpath(pathtofile, "nc")
+ncs = readdir(ncfolder)
+ncs = sort(ncs)
+nfiles = length(ncs)
+nnewframes_total = 0
+for i in 1:nfiles
+    (r, c, f) = irev.getdims(joinpath(ncfolder, ncs[i]), "irdata")
+    nnewframes_total += div(f, framestoaverage)
+end
+agg_array_total = fill(NaN, length(rowrange), length(colrange), nnewframes_total)
+currentframe = 1
+for i in 1:nfiles
+    (r, c, f) = irev.getdims(joinpath(ncfolder, ncs[i]), "irdata")
+    nnewframes = div(f, framestoaverage)
+    for j in 1:nnewframes
+        frameindices = (j - 1) * framestoaverage + 1:j * framestoaverage
+        println("Processing file ", ncs[i], ", frames ", frameindices[1], " to ", frameindices[end])
+        IRdata = irev.loadexcerptfromNetCDF4(joinpath(ncfolder, ncs[i]), "irdata", rowrange, colrange, frameindices)
+        agg_array_total[:, :, currentframe] = mean(IRdata, dims=3)[:, :, 1]
+        currentframe += 1
+    end
+end
+irev.saveirasnetcdf(agg_array_total, "irdata", joinpath(ncfolder, "all_sequences_agg.nc"))
