@@ -8,7 +8,7 @@ using ReadWriteDlm2, DelimitedFiles, Dates, PyCall,
     ImageFiltering, ProgressMeter, LaTeXStrings, NCDatasets
 mpl_axes_grid1 = pyimport("mpl_toolkits.axes_grid1")
 #not on HYPERION
-if (gethostname() == "LINUX24" || gethostname() == "Michi-T450s" || gethostname() == "x1carbon5")
+if (gethostname() == "slfl29682" || gethostname() == "Michi-T450s" || gethostname() == "x1carbon5")
     using PyPlot
 end
 #include("general.jl")
@@ -19,8 +19,8 @@ end
 export loadfromNetCDF4, loadexcerptfromNetCDF4, loadcolsfromNetCDF4, findfiles, saveirasnetcdf,
     fromIRloadwinddata, fromdirloadsupptime,
     exportsupplementary, subtracttimeaverage, subtractbacklookingtimeaverage, setsnowsurfacetonan,
-    spatialgaussfilter, completekagapreprocessing, showheatmap, showheatmaptrad, removesnowsurface,
-    averagewindfield, fetchdependfunc
+    spatialgaussfilter, completekagapreprocessing, getdims, showheatmap, showheatmaptrad,
+    removesnowsurface, averagewindfield, fetchdependfunc
 
 ######################################################
 ###                LOADING AND I/O                 ###
@@ -49,6 +49,21 @@ function loadexcerptfromNetCDF4(file::String, varname::String,
     netfile = NCDataset(file, "r")
     dat = netfile[varname]
     dattot = dat[rowrange, colrange, :]
+    close(netfile)
+    return dattot
+end
+
+"""
+    loadexcerptfromNetCDF4(file::String, varname::String,
+    rowrange, colrange)
+
+Load excerpt of variable from NetCDF4 file
+"""
+function loadexcerptfromNetCDF4(file::String, varname::String,
+    rowrange, colrange, framerange)
+    netfile = NCDataset(file, "r")
+    dat = netfile[varname]
+    dattot = dat[rowrange, colrange, framerange]
     close(netfile)
     return dattot
 end
@@ -291,6 +306,17 @@ end
 ######################################################
 ###                 PROCESSING IR                  ###
 ######################################################
+"""
+    getdims(ncfile::String, varname::String)
+
+get dimensions of variable in NetCDF4 file
+"""
+function getdims(ncfile::String, varname::String)
+    ds = NCDataset(ncfile, "r")
+    a = ds[varname]
+    return size(a)
+end
+
 """
     showheatmap(data::Array, min, max, title::String="IRdata", cmperpxlu=0.606, cmperpxlw=0.549, xis0pxl=30, yis0pxl=360)
 

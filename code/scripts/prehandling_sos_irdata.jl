@@ -1,9 +1,29 @@
 
 #directory containing subfolders with 1000 files in each
-upperdir = "/home/haugened/Documents/data/sos/250917_for_Eli/230518_raw/"
+upperdir = "/home/haugened/Documents/data/sos/250917_for_Eli/txt"
 
-folders = readdir(upperdir)
-
+#folders = readdir(upperdir)
+#######################################################
+#generate subfolders each containing defined number of frames
+framesperfolder = 3000
+files = readdir(upperdir)
+nfiles = length(files)
+nfolders = ceil(Int, nfiles / framesperfolder)
+println("Number of files: ", nfiles)
+println("Number of folders to be created: ", nfolders)
+for i in 1:nfolders
+    foldername = lpad(string(i), 3, '0')
+    mkdir(joinpath(upperdir, foldername))
+end
+files = sort(files)
+for (k, i) in enumerate(files)
+    folderindex = div(k - 1, framesperfolder) + 1
+    foldername = lpad(string(folderindex), 3, '0')
+    mv(joinpath(upperdir, i), joinpath(upperdir, foldername, i); force=true)
+end
+println("Done")
+######################################################
+#=
 #move files from subfolders to upper directory
 for i in folders
     println("Processing folder: ", i)
@@ -17,7 +37,8 @@ end
 for i in folders
     rm(joinpath(upperdir, i); force=true, recursive=true)
 end
-
+=#
+#=
 #thin out files, keep only every keepevery-th file
 keepevery = 30
 files = readdir(upperdir)
@@ -32,7 +53,7 @@ files = readdir(upperdir)
 nfiles = length(files)
 println("Number of files after thinning: ", nfiles)
 println("Done")
-
+=#
 ######################################################
 #=
 #compare to converted files
@@ -68,22 +89,15 @@ println("Done")
 =#
 ######################################################
 #move irdataxxxxx.txt to xxxxx.txt
-files = readdir(upperdir)
-for i in files
-    if startswith(i, "irdata")
-        newname = i[7:end]
-        mv(joinpath(upperdir, i), joinpath(upperdir, newname))
+for i in readdir(upperdir)
+    println("folder: ", i)
+    files = readdir(joinpath(upperdir,i))
+    #rename files to consecutive numbering starting from 00001.txt
+    nfiles = length(files)
+    sortedfiles = sort(files)
+    for (k, j) in enumerate(sortedfiles)
+        newname = lpad(string(k), 7, '0') * ".txt"
+        mv(joinpath(upperdir, i, j), joinpath(upperdir, i, newname); force=true)
     end
+    files = readdir(upperdir)
 end
-
-upperdir = "/home/haugened/Documents/data/sos/250917_for_Eli/converted/230517_120045/"
-#rename files to consecutive numbering starting from 00001.txt
-files = readdir(upperdir)
-nfiles = length(files)
-println("Number of files before renaming: ", nfiles)
-sortedfiles = sort(files)
-for (k, i) in enumerate(sortedfiles)
-    newname = lpad(string(k), 7, '0') * ".txt"
-    mv(joinpath(upperdir, i), joinpath(upperdir, newname); force=true)
-end
-files = readdir(upperdir)
