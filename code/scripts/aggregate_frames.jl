@@ -5,36 +5,27 @@
 #=
 Aggregate frames so that the resulting .nc-file is not too large
 =#
-using PyCall, Statistics, LaTeXStrings, Dates #DelimitedFiles, Dates, Random, FFTW, Dates
-#StatsBase,ImageFiltering,
-import PyPlot
-#GridSpec = pyimport("matplotlib.gridspec")
-#mpwidgets = pyimport("matplotlib.widgets")
-#animation = pyimport("matplotlib.animation")
+using Statistics
+#import PyPlot
 
 importdir = joinpath(@__DIR__, "..")
-pathtofile = "/home/haugened/Documents/data/sos/250917_for_Eli/"
+pathtofile = "/home/haugened/Documents/data/sos/250917_for_Eli/230518_132940_frames0_to_54999"
 
 include(joinpath(importdir, "src", "ir_evaluation.jl"))
 #include(joinpath(importdir, "src", "general.jl"))
 import .irev
 #import .gen
-PyPlot.pygui(true)
 
-ncfile = "230517_120045_frames14000_to_17999.nc"
-outfile = joinpath(pathtofile, "230517_120045_frames14000_to_17999_avg300.nc")
-
-rowrange = collect(75:539)
+rowrange = collect(121:599)
 colrange = collect(1:1024)
 framestoaverage = 30*10
 
-######################################################
-
-println()
-println("-----------S-T-A-R-T-------------")
-
 #######################################################
 #save aggregate for single file
+
+#ncfile = "230517_120045_frames14000_to_17999.nc"
+#outfile = joinpath(pathtofile, "230517_120045_frames14000_to_17999_avg300.nc")
+
 (nrows, ncols, nframes) = irev.getdims(joinpath(pathtofile, ncfile), "irdata")
 
 nnewframes = div(nframes, framestoaverage)
@@ -51,7 +42,7 @@ irev.saveirasnetcdf(agg_array, "irdata", outfile)
 
 #######################################################
 #aggregate for multiple nc files in a folder (not over file boundaries!)
-ncfolder = joinpath(pathtofile, "nc")
+ncfolder = pathtofile #joinpath(pathtofile, "nc")
 ncs = readdir(ncfolder)
 ncs = sort(ncs)
 nfiles = length(ncs)

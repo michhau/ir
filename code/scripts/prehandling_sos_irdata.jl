@@ -1,11 +1,28 @@
 
 #directory containing subfolders with 1000 files in each
-upperdir = "/home/haugened/Documents/data/sos/250917_for_Eli/txt"
+upperdir = "/media/haugened/T7 Shield/250917_for_Eli/converted/230518"
+
+#######################################################
+#check which frames are missing
+files = readdir(upperdir)
+numbers = parse.(Int, replace.(files, r"irdata" => "", r".txt" => ""))
+sortednumbers = sort(numbers)
+nfiles = length(sortednumbers)
+println("Number of files: ", nfiles)
+missing = Int[]
+for i in 1:sortednumbers[end]
+    if !in(i, sortednumbers)
+        push!(missing, i)
+    end
+end
+println("Missing files: ", missing)
+println("Number of missing files: ", length(missing))
+println("Done")
 
 #folders = readdir(upperdir)
 #######################################################
 #generate subfolders each containing defined number of frames
-framesperfolder = 3000
+framesperfolder = 3900
 files = readdir(upperdir)
 nfiles = length(files)
 nfolders = ceil(Int, nfiles / framesperfolder)
