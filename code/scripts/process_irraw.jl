@@ -35,7 +35,7 @@ for evaluationfolder in evaluationlist
     for i in stringseq
         #irraw.creatematarrayIRB2ASCII(i, "a")
         targetstring = joinpath(evaluationfolder, string(i, ".nc"))
-        irraw.createnetcdfIRB2ASCII(i, targetstring)
+        irraw.createnetcdfIRB2ASCII(i, targetstring, 5)
     end
     #=
    #only SLFLINUX24: running the MATLAB-script to compress the output .mat-files

@@ -303,11 +303,14 @@ end
 =#
 
 """
+    createnetcdfIRB2ASCII(strseq::String, target::String, deflatelvl::Int64=5)
+
+
     createnetcdfIRB2ASCII(strseq::String, target::String)
 
 Go to directory and create .nc for exported with IRB2ASCII
 """
-function createnetcdfIRB2ASCII(strseq::String, target::String)
+function createnetcdfIRB2ASCII(strseq::String, target::String, deflatelvl::Int64=5)
     println(string("Going to directory ", strseq, " ..."))
     cd(strseq)
     (idxstartpic, idxendpic) = fromdirloadsupplementary(strseq)
@@ -317,7 +320,7 @@ function createnetcdfIRB2ASCII(strseq::String, target::String)
     #importfromfiles.exportsupplementary(evaluationfolder, numseq, idxstartpic,
     #idxendpic, Time(starttime), Time(endtime), framespersec)
     IRdata = fromIRloadIRsequenceIRB2ASCII(strseq, idxstartpic, idxendpic,0)
-    saveirasnetcdf(IRdata, "irdata", target)
+    saveirasnetcdf(IRdata, "irdata", target, deflatelvl)
 end
 
 """
