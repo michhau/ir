@@ -33,7 +33,10 @@ Load variable from NetCDF4 file
 function loadfromNetCDF4(file::String, varname::String)
     netfile = NCDataset(file, "r")
     dat = netfile[varname]
-    dattot = dat[:, :, :]
+    dattot = Float16.(dat[:,:,:])
+    if eltype(dat) == Int16
+        dattot ./= 100.0
+    end
     close(netfile)
     return dattot
 end
@@ -48,7 +51,10 @@ function loadexcerptfromNetCDF4(file::String, varname::String,
     rowrange, colrange)
     netfile = NCDataset(file, "r")
     dat = netfile[varname]
-    dattot = dat[rowrange, colrange, :]
+    dattot = Float16.(dat[rowrange,colrange,:])
+    if eltype(dat) == Int16
+        dattot ./= 100.0
+    end
     close(netfile)
     return dattot
 end
@@ -63,7 +69,10 @@ function loadexcerptfromNetCDF4(file::String, varname::String,
     rowrange, colrange, framerange)
     netfile = NCDataset(file, "r")
     dat = netfile[varname]
-    dattot = dat[rowrange, colrange, framerange]
+    dattot = Float16.(dat[rowrange,colrange,framerange])
+    if eltype(dat) == Int16
+        dattot ./= 100.0
+    end
     close(netfile)
     return dattot
 end
@@ -78,7 +87,10 @@ function loadcolsfromNetCDF4(file::String, varname::String,
     colrange)
     netfile = NCDataset(file, "r")
     dat = netfile[varname]
-    dattot = dat[:, colrange, :]
+    dattot = Float16.(dat[:, colrange, :])
+    if eltype(dat) == Int16
+        dattot ./= 100.0
+    end
     close(netfile)
     return dattot
 end

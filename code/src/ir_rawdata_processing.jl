@@ -24,6 +24,7 @@ function sorttxtfilestofolders(pathtofolderall::String)
     #regex for the 'xx_points_slice.txt'-files
     sliceregex = string(".*", "_points_slice.txt")
     elementsrawdir = readdir(pathtofolderall)
+    println(elementsrawdir)
     for i in elementsrawdir
         if isfile(joinpath(pathtofolderall, i))
             #seperate file stam from numeration (skip file ending)
@@ -131,7 +132,7 @@ function fromdirloadpointdata(pathtofile::String, seqnr::Int64)
     #         3rd dim: 1=rowindex, 2=colindex
     corners = zeros(Int, 2, 4, 2)
     #scale: 1st dim: 1=scale-row (cm/pxl), 2=scale-col (cm/pxl)
-    scale = zeros(Float64, 2)
+    scale = zeros(Float16, 2)
 
     #filling the points
     #left screen
@@ -153,8 +154,8 @@ function fromdirloadpointdata(pathtofile::String, seqnr::Int64)
     corners[2, 4, 1]  = parse(Int, temp[72:75])
     corners[2, 4, 2]  = parse(Int, temp[77:80])
     #scale
-    scale[1] = parse(Float64, temp[83:87])
-    scale[2] = parse(Float64, temp[89:93])
+    scale[1] = parse(Float16, temp[83:87])
+    scale[2] = parse(Float16, temp[89:93])
     #transitionpoint-col
     tpcol = parse(Int, temp[95:98])
 
@@ -185,7 +186,7 @@ Read single IRBIS-exported ASCII-picture and format the resulting array
 function fromIRloadIRpicture(filename::String, skiprows::Int64)::Array
     a=readdlm2(filename, '\t'; decimal=',',
     skipstart=9+skiprows, use_mmap=true, dims=(768-skiprows, 1025))
-    a=Array{Float64}(a[:, 1:1024])
+    a=Array{Float16}(a[:, 1:1024])
     return a
 end
 
@@ -197,7 +198,7 @@ Read single IRB2ASCII-exported ASCII-picture and format the resulting array
 function fromIRloadIRpictureIRB2ASCII(filename::String, skiprows::Int64)::Array
     a=readdlm2(filename, '\t'; decimal='.',
     skipstart=1+skiprows, use_mmap=true)#, dims=(768-skiprows, 1025))
-    a=Array{Float64}(a[:, 1:end-1])
+    a=Array{Float16}(a[:, 1:end-1])
     return a
 end
 
@@ -208,10 +209,10 @@ function fromIRloadIRsequence(strseq::String,
     println("loading IR sequence ", strseq, " ...")
     idxpics = collect(idxstartpic:idxendpic)
     totalnrpictures = length(idxpics)
-    IRdata = zeros(Float64, 768-skiprows, 1024, totalnrpictures)
+    IRdata = zeros(Int16, 768-skiprows, 1024, totalnrpictures)
     Threads.@threads for i in 1:totalnrpictures
         filename = joinpath(strseq, string(lpad(idxpics[i],7,"0"), ".txt"))
-        IRdata[:, :, i] = fromIRloadIRpicture(filename, skiprows)
+        IRdata[:, :, i] = round.(Int, fromIRloadIRpicture(filename, skiprows))
         println(i, "/", totalnrpictures)
     end
     println("Done")
@@ -232,12 +233,12 @@ function fromIRloadIRsequenceIRB2ASCII(strseq::String,
     totalnrpictures = length(idxpics)
     filename = joinpath(strseq, string(lpad(idxpics[1],7,"0"), ".txt"))
     tmp = fromIRloadIRpictureIRB2ASCII(filename, skiprows)
-    IRdata = zeros(Float64, size(tmp,1), size(tmp,2), totalnrpictures)
-    IRdata[:,:,1] = tmp
+    IRdata = zeros(Int16, size(tmp,1), size(tmp,2), totalnrpictures)
+    IRdata[:,:,1] = round.(Int, tmp.*100)
     tmp = nothing
     Threads.@threads for i in 2:totalnrpictures
         filename = joinpath(strseq, string(lpad(idxpics[i],7,"0"), ".txt"))
-        IRdata[:, :, i] = fromIRloadIRpictureIRB2ASCII(filename, skiprows)
+        IRdata[:, :, i] = round.(Int, fromIRloadIRpictureIRB2ASCII(filename, skiprows).*100)
         println(i, "/", totalnrpictures)
     end
     println("Done")
