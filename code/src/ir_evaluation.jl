@@ -37,8 +37,23 @@ function loadfromNetCDF4(file::String, varname::String)
     if eltype(dat) == Int16
         dattot ./= 100.0
     end
+    header_Dict = Dict{String, Any}()
+    #check for header
+    try
+        sourcefile = netfile["sourcefile"]
+        header_Dict["sourcefile"] = sourcefile[:]
+        timestamp = netfile["timestamp"]
+        header_Dict["timestamp"] = timestamp[:]
+        timestamp_ms = netfile["timestamp_ms"]
+        header_Dict["timestamp_ms"] = timestamp_ms[:]
+        tempshutter = netfile["temp_shutter"]
+        header_Dict["temp_shutter"] = tempshutter[:]
+        imageindex = netfile["imageindex"]
+        header_Dict["imageindex"] = imageindex[:]
+    catch e
+    end
     close(netfile)
-    return dattot
+    return dattot, header_Dict
 end
 
 """

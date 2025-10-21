@@ -191,13 +191,13 @@ function fromIRloadIRpicture(filename::String, skiprows::Int64)::Array
 end
 
 """
-    fromIRloadIRpictureIRB2ASCII(filename::String, skiprows::Int64)::Array
+    fromIRloadIRpictureIRB2ASCII(filename::String, skipstrt::Int)::Array
 
 Read single IRB2ASCII-exported ASCII-picture and format the resulting array
 """
-function fromIRloadIRpictureIRB2ASCII(filename::String, skiprows::Int64)::Array
+function fromIRloadIRpictureIRB2ASCII(filename::String, skipstrt::Int)::Array
     a=readdlm2(filename, '\t'; decimal='.',
-    skipstart=1+skiprows, use_mmap=true)#, dims=(768-skiprows, 1025))
+    skipstart=skipstrt, use_mmap=true)
     a=Array{Float16}(a[:, 1:end-1])
     return a
 end
@@ -220,29 +220,119 @@ function fromIRloadIRsequence(strseq::String,
 end
 
 """
+    read_header(filepath::String)
+
+Read configuration file into a flat dictionary
+"""
+function read_header(filepath::String)
+    config = Dict{String, Any}()
+    header = false
+    
+    open(filepath, "r") do io
+        #first read content of first row to decide, if header or not
+        firstrow = readline(io)
+        if occursin("Data", firstrow)
+            header = false
+        else
+            header = true
+        end
+        if header
+            #skip lines 1 to 11
+            for i in 2:11
+                readline(io)
+            end
+            for i in 12:22
+                line = strip(readline(io))
+                if i in 16:21
+                    continue  #skip lines we don't need
+                end
+                
+                if occursin('=', line)
+                    key, value = split(line, '=', limit=2)
+                    key = strip(key)[6:end-6]
+                    value = strip(value)
+                    
+                    if key == "TimeStamp"
+                        parsed_value = tryparse(DateTime, value, dateformat"yyyy-mm-dd HH:MM:SS")
+                    elseif key == "Camera_Temp_Shutter"|| key == "Timestamp_Milliseconds"
+                        parsed_value = tryparse(Float32, value)
+                    elseif key == "Image_Index"
+                        parsed_value = tryparse(Int32, value)
+                    else
+                        parsed_value = nothing
+                    end
+                    if parsed_value !== nothing
+                        value = parsed_value
+                    end
+                    
+                    config[key] = value
+                end
+            end
+        end
+    end
+    
+    return header, config
+end
+
+"""
     fromIRloadIRsequenceIRB2ASCII(strseq::String,
-    idxstartpic::Int64, idxendpic::Int64, skiprows::Int64)::Array
+    idxstartpic::Int64, idxendpic::Int64)::Array
 
 Read IRB2ASCII-exported sequence of ASCII-pictures with
 'fromIRloadIRpictureIRB2ASCII'-function
 """
 function fromIRloadIRsequenceIRB2ASCII(strseq::String,
-    idxstartpic::Int64, idxendpic::Int64, skiprows::Int64)::Array
+    idxstartpic::Int64, idxendpic::Int64)
     println("loading IR sequence ", strseq, " ...")
+    @info "If file has a header, make sure that the lines are still correctly assigned in read_header"
     idxpics = collect(idxstartpic:idxendpic)
     totalnrpictures = length(idxpics)
+    #read first frame to get header info and array size
     filename = joinpath(strseq, string(lpad(idxpics[1],7,"0"), ".txt"))
-    tmp = fromIRloadIRpictureIRB2ASCII(filename, skiprows)
+    (isheader_tot, header1) = read_header(filename)
+    if isheader_tot
+        #initialize header vectors
+        sourcefile = Vector{String}(undef, totalnrpictures)
+        timestamp = Vector{DateTime}(undef, totalnrpictures)
+        timestamp_ms = Vector{Float32}(undef, totalnrpictures)
+        cameratempshutter = Vector{Float32}(undef, totalnrpictures)
+        imageindex = Vector{Int32}(undef, totalnrpictures)
+        #write first entries to header vectors
+        sourcefile[1] = header1["File_Name"]
+        timestamp[1] = header1["TimeStamp"]
+        timestamp_ms[1] = header1["Timestamp_Milliseconds"]
+        cameratempshutter[1] = header1["Camera_Temp_Shutter"]
+        imageindex[1] = header1["Image_Index"]
+        skipstart = 26
+    else
+        #initialize empty header vectors for type stability
+        sourcefile = Vector{String}(undef, 0)
+        timestamp = Vector{DateTime}(undef, 0)
+        timestamp_ms = Vector{Float32}(undef, 0)
+        cameratempshutter = Vector{Float32}(undef, 0)
+        imageindex = Vector{Int32}(undef, 0)
+        skipstart = 1
+    end
+    tmp = fromIRloadIRpictureIRB2ASCII(filename, skipstart)
+    #initialize 3-dim array for actual data
     IRdata = zeros(Int16, size(tmp,1), size(tmp,2), totalnrpictures)
     IRdata[:,:,1] = round.(Int, tmp.*100)
     tmp = nothing
     Threads.@threads for i in 2:totalnrpictures
         filename = joinpath(strseq, string(lpad(idxpics[i],7,"0"), ".txt"))
-        IRdata[:, :, i] = round.(Int, fromIRloadIRpictureIRB2ASCII(filename, skiprows).*100)
+        if isheader_tot
+            (isheader, header) = read_header(filename)
+            sourcefile[i] = header["File_Name"]
+            timestamp[i] = header["TimeStamp"]
+            timestamp_ms[i] = header["Timestamp_Milliseconds"]
+            cameratempshutter[i] = header["Camera_Temp_Shutter"]
+            imageindex[i] = header["Image_Index"]
+        end
+        IRdata[:, :, i] = round.(Int, fromIRloadIRpictureIRB2ASCII(filename, skipstart).*100)
         println(i, "/", totalnrpictures)
     end
     println("Done")
-    return IRdata
+    return IRdata, isheader_tot, sourcefile, timestamp, timestamp_ms, cameratempshutter, imageindex
 end
 
 #=
@@ -271,42 +361,28 @@ function saveirasnetcdf(data::Array, name::String, target::String, deflatelvl::I
     close(ds)
 end
 
-#=
-"Go to directory and create .mat array for a predefined excerpt of the IR-image"
-function creatematarray(strseq::String, fileprefix::String)
-    println(string("Going to directory ", strseq, " ..."))
-    cd(strseq)
-    (idxstartpic, idxendpic) = fromdirloadsupplementary(strseq)
-    #(starttime, endtime) = importfromfiles.fromdirloadsupptime(pathstring)
-    #framespersec =, "data\\"
-    #(idxendpic - idxstartpic + 1)/Dates.value(Second(endtime - starttime))
-    #importfromfiles.exportsupplementary(evaluationfolder, numseq, idxstartpic,
-    #idxendpic, Time(starttime), Time(endtime), framespersec)
-    IRdata = fromIRloadIRsequence(strseq, idxstartpic, idxendpic,0)
-    exportseqtoMAT(IRdata, strseq, fileprefix)
-end
-=#
+"""
+    saveirandheaderasnetcdf(data::Array, name::String, target::String, deflatelvl::Int64=5)
 
-#=
-"Go to directory and create .mat array for exported with IRB2ASCII"
-function creatematarrayIRB2ASCII(strseq::String, fileprefix::String)
-    println(string("Going to directory ", strseq, " ..."))
-    cd(strseq)
-    (idxstartpic, idxendpic) = fromdirloadsupplementary(strseq)
-    #(starttime, endtime) = importfromfiles.fromdirloadsupptime(pathstring)
-    #framespersec =, "data\\"
-    #(idxendpic - idxstartpic + 1)/Dates.value(Second(endtime - starttime))
-    #importfromfiles.exportsupplementary(evaluationfolder, numseq, idxstartpic,
-    #idxendpic, Time(starttime), Time(endtime), framespersec)
-    IRdata = fromIRloadIRsequenceIRB2ASCII(strseq, idxstartpic, idxendpic,0)
-    exportseqtoMAT(IRdata, strseq, fileprefix)
+Save 3D IRdata-array as NetCDF4
+"""
+function saveirandheaderasnetcdf(data::Array, name::String, sourcefile::Vector, timestamp::Vector, timestamp_ms::Vector,
+    cameratempshutter::Vector, imageindex::Vector, target::String, deflatelvl::Int64=5)
+    @info("Saving IRdata output including header information to NetCDF4-file")
+    ds = NCDataset(target, "c")
+    defDim(ds, "row", size(data, 1))
+    defDim(ds, "col", size(data, 2))
+    defDim(ds, "frame", size(data, 3))
+    defVar(ds, name, data, ("row", "col", "frame"); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "sourcefile", sourcefile, ("frame",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "timestamp", timestamp, ("frame",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "timestamp_ms", timestamp_ms, ("frame",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "temp_shutter", cameratempshutter, ("frame",); shuffle=true, deflatelevel=deflatelvl)
+    defVar(ds, "imageidx", imageindex, ("frame",); shuffle=true, deflatelevel=deflatelvl)
+    close(ds)
 end
-=#
 
 """
-    createnetcdfIRB2ASCII(strseq::String, target::String, deflatelvl::Int64=5)
-
-
     createnetcdfIRB2ASCII(strseq::String, target::String)
 
 Go to directory and create .nc for exported with IRB2ASCII
@@ -320,8 +396,14 @@ function createnetcdfIRB2ASCII(strseq::String, target::String, deflatelvl::Int64
     #(idxendpic - idxstartpic + 1)/Dates.value(Second(endtime - starttime))
     #importfromfiles.exportsupplementary(evaluationfolder, numseq, idxstartpic,
     #idxendpic, Time(starttime), Time(endtime), framespersec)
-    IRdata = fromIRloadIRsequenceIRB2ASCII(strseq, idxstartpic, idxendpic,0)
-    saveirasnetcdf(IRdata, "irdata", target, deflatelvl)
+    (IRdata, isheader, sourcefile, timestamp, timestamp_ms, cameratempshutter, imageindex) =
+    fromIRloadIRsequenceIRB2ASCII(strseq, idxstartpic, idxendpic)
+    if isheader
+        saveirandheaderasnetcdf(IRdata, "irdata", sourcefile, timestamp, timestamp_ms,
+        cameratempshutter, imageindex, target, deflatelvl)
+    else
+        saveirasnetcdf(IRdata, "irdata", target, deflatelvl)
+    end
 end
 
 """
