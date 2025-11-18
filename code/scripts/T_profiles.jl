@@ -1,79 +1,69 @@
-######################################################
-###        VERTICAL PROFILES FROM SCREEN DATA      ###
-###            author: Michi Haugeneder            ###
-######################################################
-#=
-Currently only implemented for preprocessed HEFEX2-profiles
-=#
-using PyCall, Statistics, LaTeXStrings, Dates
-#StatsBase,ImageFiltering,
-import PyPlot
-GridSpec = pyimport("matplotlib.gridspec")
-#mpwidgets = pyimport("matplotlib.widgets")
-#animation = pyimport("matplotlib.animation")
+#############################
+#  for CONTRASTS dataset
+#############################
+
+using Dates                    # DateTime handling
+using PyPlot                   # plotting (Matplotlib backend)
+PyPlot.pygui(true)
+using Logging                  # simple console logger
 
 importdir = joinpath(@__DIR__, "..")
-pathtofile = "/media/michi/MHaugeneder_SSD_1/Documents/data/hefex2/profiles/10min_avg/"
-
 include(joinpath(importdir, "src", "ir_evaluation.jl"))
-include(joinpath(importdir, "src", "ir_rawdata_processing.jl"))
-#include(joinpath(importdir, "src", "general.jl"))
 import .irev
-import .irraw
-#import .gen
-PyPlot.pygui(true)
 
-######################################################
-###              CHANGE VARIABLES HERE             ###
-######################################################
-#which sequence should be loaded (string)
-ncfile = "230823_1100_to_1110_ver1.nc"
-targetfile = "230823_1100_to_1110_Tavg.nc"
-readavg = true #true, if median and quartiles have already been written to file
-avgfile = "230823_1100_to_1110_Tavg.nc"
-#for plotting
-heightlowestpoint = 0.2 #m
-cmperpxlz = 0.586
-#framespersec = 29.9
-######################################################
+# ------------------------------------------------------------------
+# 1️⃣  Input variables
+# ------------------------------------------------------------------
+root_dir = "/media/haugened/internal/contrasts/converted/" #dir containing the converted folders
+t_start = DateTime(2025,07,15,10,30,00) #start time for analysis
+t_end   = t_start + Minute(30)          #end time for analysis
+#enter col_range and row_range below!!!
 
-println()
-println("-----------S-T-A-R-T-------------")
+# ----------------------------------------------------------------------
+# Configuration (adjust once if you like)
+# ----------------------------------------------------------------------
+const LOG_LEVEL = Info          # change to Debug for more output
+global_logger(ConsoleLogger(stderr, LOG_LEVEL))
 
-######################################################
-###                   IMPORT STUFF                 ###
-######################################################
-if !readavg
-    profile = irraw.readprofilefromnetcdf(joinpath(pathtofile, ncfile))
+const FRAMES_PER_FILE = 500                # normal size
+const SAMPLE_RATE     = 30.0                # Hz
 
-    #temporal averaging profile
-    prof_avg = zeros(Float64, size(profile, 1))
-    prof_low_quart = zeros(Float64, size(profile, 1))
-    prof_up_quart = zeros(Float64, size(profile, 1))
+# ----------------------------------------------------------------------
+# Main 
+# ----------------------------------------------------------------------
+println("\n=== IR Vertical‑Profile Plotter ===\n")
 
-    for i in 1:size(profile, 1)
-        (prof_low_quart[i], prof_avg[i], prof_up_quart[i]) = quantile(profile[i, :], [0.25, 0.5, 0.75])
-    end
+# ------------------------------------------------------------------
+# 2️⃣  Locate matching files
+# ------------------------------------------------------------------
+files = irev.find_files(root_dir, t_start, t_end)
+isempty(files) && error("No files found for the given interval.")
 
-    #generate vector containing heights [m]
-    z = collect(size(profile, 1)-1:-1:0) .* (cmperpxlz/100) .+ heightlowestpoint
+# ------------------------------------------------------------------
+# 3️⃣  Show first frame for visual selection
+# ------------------------------------------------------------------
+fig, ax, first_frame = irev.plot_first_frame(files; tmin=-2, tmax=3)
+#PyPlot.show(fig)
 
-    #save averaged profiles
-    irraw.saveavgprofiletonetcdf(joinpath(pathtofile, targetfile), z, prof_avg, prof_low_quart, prof_up_quart)
-else
-    (z, prof_avg, prof_low_quart, prof_up_quart) = irraw.readavgprofilefromnetcdf(joinpath(pathtofile, avgfile))
-end
+# ------------------------------------------------------------------
+# 4️⃣  Ask user for column & row ranges (inclusive)
+# ------------------------------------------------------------------
+#row, col
+specs = [
+    irev.ProfileSpec(460:740, 200:210, "A"),
+    irev.ProfileSpec(460:740, 450:460, "B"),
+    irev.ProfileSpec(200:740, 650:660, "C"),
+    irev.ProfileSpec(200:740, 790:800, "D")   # col_range length == 1 → no median collapse
+]
 
-######################################################
-###                    PLOT DATA                   ###
-######################################################
-#plot temperature profiles
-cmap = PyPlot.get_cmap("tab10");
-fig = PyPlot.figure()
-ax = fig.add_subplot(111)
-ax.set_title("IRscreen 23.08.2023 1100-1110 UTC, median and 25%-75%")
-ax.plot(prof_avg, z, c=cmap(0))
-ax.fill_betweenx(z, prof_low_quart, prof_up_quart, color=cmap(0), ec="face", alpha=0.5)
-ax.set_xlabel(L"T_{air}~\mathrm{[^\circ C]}")
-ax.set_ylabel(L"z~\mathrm{[m]}")
-ax.grid()
+# ------------------------------------------------------------------
+# 6️⃣  Compute profile statistics
+# ------------------------------------------------------------------
+results = irev.prepare_multiple_profiles(files, t_start, t_end, specs, FRAMES_PER_FILE, SAMPLE_RATE)
+
+# ------------------------------------------------------------------
+# 7  Plot
+# ------------------------------------------------------------------
+fig = irev.plot_multi_profiles(first_frame, results, specs, t_start, t_end, "2a"; tmin=-2, tmax=3)
+
+fig.savefig("/home/haugened/Documents/data/CONTRASTS/plots/screen/2a_t_profiles_1030_1100.pdf", bbox_inches="tight")
