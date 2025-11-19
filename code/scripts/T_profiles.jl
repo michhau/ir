@@ -17,6 +17,9 @@ import .irev
 root_dir = "/media/haugened/internal/contrasts/converted/" #dir containing the converted folders
 t_start = DateTime(2025,07,15,10,30,00) #start time for analysis
 t_end   = t_start + Minute(30)          #end time for analysis
+
+pxl2meter_row = 0.006   # m per pixel vertically
+pxl2meter_col = 0.006   # m per pixel horizontally
 #enter col_range and row_range below!!!
 
 # ----------------------------------------------------------------------
@@ -64,6 +67,6 @@ results = irev.prepare_multiple_profiles(files, t_start, t_end, specs, FRAMES_PE
 # ------------------------------------------------------------------
 # 7  Plot
 # ------------------------------------------------------------------
-fig = irev.plot_multi_profiles(first_frame, results, specs, t_start, t_end, "2a"; tmin=-2, tmax=3)
+fig = irev.plot_multi_profiles(first_frame, results, specs, t_start, t_end, "2a"; tmin=-2, tmax=3, pxl2meter_row, pxl2meter_col)
 
 fig.savefig("/home/haugened/Documents/data/CONTRASTS/plots/screen/2a_t_profiles_1030_1100.pdf", bbox_inches="tight")

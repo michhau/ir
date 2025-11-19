@@ -956,7 +956,9 @@ function plot_multi_profiles(first_frame::Matrix{Float64},
                              t_end::DateTime,
                              custom_title::String = "";
                              tmin::Real = -2.0,
-                             tmax::Real = 3.0)
+                             tmax::Real = 3.0,
+                             pxl2meter_row::Float64 = 0.005,
+                             pxl2meter_col::Float64 = 0.005)
     # --------------------------------------------------------------
     # Create the figure with two sub‑plots (profile | reference frame)
     # --------------------------------------------------------------
@@ -973,10 +975,7 @@ function plot_multi_profiles(first_frame::Matrix{Float64},
     for (i, res) in enumerate(results)
         col = colors(i-1)
 
-        # y‑axis = pixel rows (the same for every profile – they may differ,
-        # but Matplotlib will align them automatically because we plot against the
-        # *same* row numbers stored in `res.row_range`.)
-        y = collect(res.row_range)
+        y = (collect(res.row_range).-res.row_range[1])[end:-1:1] .* pxl2meter_row
 
         # Median line
         ax_prof.plot(res.median, y; color=col, lw=2, label="$(res.label) – mean")
@@ -989,9 +988,9 @@ function plot_multi_profiles(first_frame::Matrix{Float64},
         #ax_prof.plot(res.max, y; color=col, ls="--", lw=1)   # same label not needed
     end
 
-    ax_prof.invert_yaxis()
+    #ax_prof.invert_yaxis()
     ax_prof.set_xlabel("Temperature (°C)")
-    ax_prof.set_ylabel("Pixel row (height)")
+    ax_prof.set_ylabel("Profile Height (m)")
     ax_prof.set_title("Vertical temperature profiles")
     ax_prof.legend(fontsize=9, framealpha=0.8)
     ax_prof.grid(true)
@@ -999,17 +998,40 @@ function plot_multi_profiles(first_frame::Matrix{Float64},
     # --------------------------------------------------------------
     # 2️⃣  Plot the reference frame (right panel) and draw coloured rectangles
     # --------------------------------------------------------------
-    im = ax_ref.imshow(first_frame; cmap=cramericm.batlow, origin="upper", vmin=tmin, vmax=tmax)
+    nrows, ncols = size(first_frame)
+
+    extent = (
+        0,                     # left  (metres)
+        (ncols-1) * pxl2meter_col,            # right (metres)
+        0,                      # bottom
+        (nrows-1) * pxl2meter_row            #  top
+    )
+
+    im = ax_ref.imshow(first_frame;
+                       cmap=cramericm.batlow,
+             # origin="upper",
+                       vmin=tmin, vmax=tmax,
+                       extent=extent)   
+
     ax_ref.set_title("Sample frame with profile locations")
+    ax_ref.set_xlabel("Horizontal distance (m)")
+    ax_ref.set_ylabel("Frame height (m)")
 
     # One rectangle per profile – colour matches the curve
     for (i, spec) in enumerate(specs)
         col = colors(i-1)
 
         # Rectangle geometry (Matplotlib expects lower‑left corner)
-        rect = patches.Rectangle((first(spec.col_range) - 0.5, first(spec.row_range) - 0.5),
-                length(spec.col_range), length(spec.row_range), linewidth = 2,
-                edgecolor = col, facecolor = "none", zorder = 10, alpha = 0.4)
+        rect = patches.Rectangle(
+            (first(spec.col_range) * pxl2meter_col,
+            (nrows - last(spec.row_range)) * pxl2meter_row),
+            length(spec.col_range) * pxl2meter_col,
+            length(spec.row_range) * pxl2meter_row,
+            linewidth = 2,
+            edgecolor = col,
+            facecolor = "none",
+            zorder = 10,
+            alpha = 0.4)
         ax_ref.add_patch(rect)
     end
 
